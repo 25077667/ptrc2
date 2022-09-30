@@ -303,7 +303,16 @@ class DeviceScreen extends StatelessWidget {
                   foregroundColor: Colors.white,
                   backgroundColor: Colors.blue,
                 ),
-                onPressed: () => {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MotorAction(
+                        device: device,
+                      ),
+                    ),
+                  );
+                },
                 child: const Text('Do actions')),
           ],
         ),
