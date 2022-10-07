@@ -4,18 +4,18 @@ import android.Manifest
 import androidx.appcompat.app.AppCompatActivity
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothDevice
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.MotionEvent
 import android.view.View
-import android.view.WindowInsets
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.Button
 import androidx.core.app.ActivityCompat
 import sccnet.tw.ptrc.databinding.ActivityFullscreenBinding
 
@@ -59,9 +59,23 @@ class FullscreenActivity : AppCompatActivity() {
 
     // Bluetooth init
     private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
-    private val requestEnableBt = 1
 
+    private val receiver = object : BroadcastReceiver() {
+        @SuppressLint("MissingPermission")
+        override fun onReceive(context: Context, intent: Intent) {
+            when(intent.action) {
+                BluetoothDevice.ACTION_FOUND -> {
+                    // Discovery has found a device. Get the BluetoothDevice
+                    // object and its info from the Intent.
+                    val device: BluetoothDevice? =
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
 
+                    val deviceName = device?.name
+                    val deviceHardwareAddress = device?.address // MAC address
+                }
+            }
+        }
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,6 +88,7 @@ class FullscreenActivity : AppCompatActivity() {
 
         isFullscreen = true
 
+        // Enable Bluetooth
         if (bluetoothAdapter?.isEnabled == false) {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             if (ActivityCompat.checkSelfPermission(
@@ -90,7 +105,25 @@ class FullscreenActivity : AppCompatActivity() {
                 // for ActivityCompat#requestPermissions for more details.
                 return
             }
-            startActivityForResult(enableBtIntent, requestEnableBt)
+            startActivityForResult(enableBtIntent, 1)
+        }
+
+        // Query paired devices
+        val pairedDevices: Set<BluetoothDevice>? = bluetoothAdapter?.bondedDevices
+        pairedDevices?.forEach { device ->
+            val deviceName = device.name
+            val deviceHardwareAddress = device.address // MAC address
+        }
+        val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
+        registerReceiver(receiver, filter)
+
+        // Button for start scan
+        val scanButton = findViewById<Button>(R.id.scan_button)
+        scanButton.setOnClickListener {
+            val discoverableIntent: Intent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
+                putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 15)  // Scan for 15s
+            }
+            startActivityForResult(discoverableIntent, 1)
         }
     }
 
@@ -127,6 +160,13 @@ class FullscreenActivity : AppCompatActivity() {
         // Schedule a runnable to display UI elements after a delay
         hideHandler.removeCallbacks(hidePart2Runnable)
         hideHandler.postDelayed(showPart2Runnable, UI_ANIMATION_DELAY.toLong())
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        // Don't forget to unregister the ACTION_FOUND receiver.
+        unregisterReceiver(receiver)
     }
 
     /**
