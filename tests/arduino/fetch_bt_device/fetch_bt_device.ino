@@ -21,6 +21,6 @@ void loop() {
   // 若收到藍牙模組的資料，則送到「序列埠監控視窗」
   if (BT.available()) {
     val = BT.read();
-    Serial.print(val);
+    Serial.println((int)val);
   }
 }
